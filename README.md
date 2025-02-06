@@ -51,8 +51,5 @@ Este projeto é um **Gerador de Etiquetas** baseado em HTML, CSS e JavaScript, q
 - **Mapeamento de QR Codes**: O mapeamento de QR codes pode ser alterado no objeto mapeamentoQR dentro do script JavaScript. Adicione ou remova os códigos conforme necessário.
 - **Tamanho da Etiqueta**: O tamanho das etiquetas foi configurado para **80mm x 50mm**. Você pode ajustar o tamanho das etiquetas alterando as propriedades CSS.
 
-### Contribuições:
-
-Contribuições são bem-vindas! Se você tiver alguma melhoria ou correção, fique à vontade para abrir um **Pull Request**.
 
 ---
