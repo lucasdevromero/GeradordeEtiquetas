@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gerador de Etiquetas para Impressão</title>
+  <style>
+    body {
+      font-family: Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #021D49;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column; /* Coloca o conteúdo em coluna */
+      height: 100vh; /* Ocupa toda a altura da tela */
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px; /* Espaço entre o título e os campos */
+      color: white
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 5px; /* Espaço entre o título e os campos */
+    }
+
+    #form-container {
+      display: flex;
+      justify-content: center; /* Centraliza os campos horizontalmente */
+      gap: 10px; /* Reduzimos o gap para 10px */
+      width: 80%; /* Ajusta a largura do container */
+      max-width: 600px; /* Limita a largura máxima */
+    }
+
+    .planilha {
+      display: flex;
+      flex-direction: column;
+      width: 45%; /* Diminui a largura dos campos */
+      height: 350px;
+      border: 1px solid #ddd;
+      background-color: white;
+      padding: 10px;
+      box-sizing: border-box;
+      font-family: monospace;
+      border-radius: 10px; /* Arredonda as bordas */
+    }
+
+
+    .planilha textarea {
+      width: 100%;
+      height: 100%;
+      font-family: monospace;
+      font-size: 16px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      resize: none;
+      box-sizing: border-box;
+      line-height: 30px;
+      white-space: pre-wrap;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-top: 20px;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .etiqueta {
+      width: 80mm; /* Ajustado para 80mm */
+      height: 50mm; /* Ajustado para 50mm */
+      border: 1px solid #000;
+      display: inline-block;
+      position: relative;
+      padding: 10px;
+      box-sizing: border-box;
+      margin: 10px;
+      font-size: 12px;
+    }
+
+    .etiqueta .indice {
+      font-weight: bold;
+      font-size: 25px;
+      margin-bottom: 10px;
+    }
+
+    .etiqueta .codigo {
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.5;
+      position: absolute;
+      top: 50px;
+      left: 50px;
+      width: 100%;
+      text-align: left;
+    }
+
+    .etiqueta .qr-code {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 70px;
+      height: 70px;
+      text-align: left;
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.5;
+    }
+
+    .etiqueta .codigo-barras {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 250px;
+      height: 50px;
+      text-align: center;
+      font-size: 5px;
+    }
+
+    .etiqueta .data-hora {
+      font-size: 11px;
+      text-align: left;
+      position: absolute;
+      top: 5px;
+      left: 10px;
+      font-style: italic;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .erro {
+      color: red;
+      font-size: 14px;
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* Logo da empresa */
+    .logo {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      width: 150px;
+      z-index: 10;
+    }
+
+    .logo img {
+      width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Logo da empresa -->
+  <div class="logo">
+    <img src="https://forumilos.com.br/wp-content/uploads/2024/08/CEVA-LOGISTICS-1024x308.png" alt="Logo CEVA Logistics" />
+  </div>
+
+  <h1>Gerador de Etiquetas</h1>
+
+  <div id="form-container">
+    <div class="planilha">
+      <h2>Código WM</h2>
+      <textarea id="codigo-barras" placeholder="Cole os códigos de barras aqui, um por linha." oninput="atualizarIndices('codigo-barras'); validarCampos()"></textarea>
+    </div>
+
+    <div class="planilha">
+      <h2>Código Doca</h2>
+      <textarea id="qr-codes" placeholder="Cole os QR code aqui, um por linha." oninput="atualizarIndices('qr-codes'); validarCampos()"></textarea>
+    </div>
+  </div>
+
+  <button id="gerar-etiquetas-btn" onclick="gerarETeguetasParaImpressao()" disabled>Gerar Etiquetas</button>
+
+  <div id="erro" class="erro"></div>
+
+  <script>
+    // Função que atualiza os índices conforme o conteúdo dos campos de entrada
+    function atualizarIndices(id) {
+      const campo = document.getElementById(id);
+      const linhas = campo.value.split('\n');
+
+      // Remove linhas vazias e reindexa as restantes
+      const linhasComIndice = linhas
+        .map((linha, i) => {
+          const linhaSemIndice = linha.trim().replace(/^\d+\.\s*/, '').trim(); // Remove o índice existente, se houver
+          if (linhaSemIndice !== '') {
+            return `${i + 1}. ${linhaSemIndice}`; // Adiciona índice se a linha não estiver vazia
+          }
+          return ''; // Remove a linha (retorna vazia) se ela for vazia
+        })
+        .join('\n');
+
+      // Atualiza o conteúdo do campo com os índices
+      campo.value = linhasComIndice;
+    }
+
+    // Função que valida os campos antes de permitir a geração das etiquetas
+    function validarCampos() {
+      const codigosBarras = document.getElementById('codigo-barras').value.split('\n').filter(l => l.trim() !== '');
+      const qrCodes = document.getElementById('qr-codes').value.split('\n').filter(l => l.trim() !== '');
+      const erroDiv = document.getElementById('erro');
+      const botaoGerar = document.getElementById('gerar-etiquetas-btn');
+
+      // Verifica se os campos estão preenchidos e se o número de códigos de barras é igual ao número de QR codes
+      if (codigosBarras.length === 0 || qrCodes.length === 0) {
+        erroDiv.textContent = "Os campos não podem estar vazios.";
+        botaoGerar.disabled = true; // Desabilita o botão
+        return;
+      }
+
+      // Mapeamento de QR Code com resultados
+      const mapeamentoQR = {
+        "123": "Doca 1",
+        "456": "Doca 2",
+        "789": "Doca 3",
+        "1011": "Doca 4",
+        // Adicione outros mapeamentos conforme necessário
+      };
+
+      // Verifica se o código do QR Code está no mapeamento
+      const qrCodeValido = qrCodes.every(linha => {
+        const codigoSemIndice = linha.trim().replace(/^\d+\.\s*/, '').trim(); // Remove o índice
+        return mapeamentoQR[codigoSemIndice] !== undefined; // Verifica se o código está no mapeamento
+      });
+
+      if (!qrCodeValido) {
+        erroDiv.textContent = "Um ou mais códigos de QR não possuem correspondência no mapeamento.";
+        botaoGerar.disabled = true; // Desabilita o botão
+        return;
+      }
+
+      // Verifica se o formato das linhas de QR Codes é válido (apenas números após o índice)
+      const qrCodeFormatoValido = qrCodes.every(linha => {
+        const codigoSemIndice = linha.trim().replace(/^\d+\.\s*/, '').trim(); // Remove o índice
+        return /^[0-9]+$/.test(codigoSemIndice); // Verifica se a parte após o índice é composta apenas por números
+      });
+
+      if (!qrCodeFormatoValido) {
+        erroDiv.textContent = "Cada QR Code deve conter apenas números após o índice.";
+        botaoGerar.disabled = true; // Desabilita o botão
+        return;
+      }
+
+      // Verifica se o formato dos códigos de barras é válido (somente números após o índice)
+      const codigosValido = codigosBarras.every(linha => {
+        // Remove o índice da linha e verifica se o que resta é somente números
+        const codigoSemIndice = linha.trim().replace(/^\d+\.\s*/, '').trim();
+        return /^[0-9]+$/.test(codigoSemIndice); // Verifica se a parte após o índice é composta apenas por números
+      });
+
+      if (!codigosValido) {
+        erroDiv.textContent = "Cada código de barras deve conter apenas números após o índice.";
+        botaoGerar.disabled = true; // Desabilita o botão
+        return;
+      }
+
+      // Verifica se o número de Códigos de Barras é igual ao número de QR Codes
+      if (codigosBarras.length !== qrCodes.length) {
+        erroDiv.textContent = "O número de Códigos de Barras deve ser igual ao número de QR Codes.";
+        botaoGerar.disabled = true; // Desabilita o botão
+        return;
+      }
+
+      erroDiv.textContent = ""; // Limpa a mensagem de erro
+      botaoGerar.disabled = false; // Habilita o botão
+    }
+
+    // Função para gerar as etiquetas (continua igual)
+    function gerarETeguetasParaImpressao() {
+      const janela = window.open('', '_blank');
+
+      janela.document.write('<html><head><title>Imprimir Etiquetas</title>');
+      janela.document.write('<style> body { font-family: Arial, sans-serif; padding: 30px; }');
+      
+      // Ajustando o tamanho da etiqueta e fontes
+      janela.document.write('.etiqueta { width: 80mm; height: 50mm; border: 1px solid #000; display: inline-block; position: relative; padding: 10px; box-sizing: border-box; margin: 10px; font-size: 12px; }');
+      
+      // Aumentando a fonte do índice
+      janela.document.write('.etiqueta .indice { font-weight: bold; font-size: 25px; margin-bottom: 10px; }');
+      
+      // Aumentando a fonte do código de barras
+      janela.document.write('.etiqueta .codigo { font-size: 16px; font-weight: bold; line-height: 1.5; position: absolute; top: 50px; left: 50px; width: 100%; text-align: left; }');
+      
+      // Aumentando a fonte do QR Code
+      janela.document.write('.etiqueta .qr-code { position: absolute; top: 10px; right: 10px; width: 70px; height: 70px; text-align: left; font-size: 16px; font-weight: bold; line-height: 1.5; }');
+      
+      // Ajustando o código de barras (apenas a largura)
+      janela.document.write('.etiqueta .codigo-barras { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); width: 250px; height: 50px; text-align: center; font-size: 5px; }');
+      
+      // Estilo para a data e hora de impressão
+      janela.document.write('.etiqueta .data-hora { font-size: 11px; text-align: left; position: absolute; top: 5px; left: 10px; font-style: italic; color: #000; font-weight: bold; }');
+      
+      janela.document.write('</style></head><body>');
+
+      const codigosBarras = document.getElementById('codigo-barras').value.split('\n');
+      const qrCodes = document.getElementById('qr-codes').value.split('\n');
+      const maxLength = Math.min(codigosBarras.length, qrCodes.length);
+
+      // Obtendo data e hora atuais no formato dd/mm/yyyy hh:mm
+      const dataHora = new Date();
+      const dataFormatada = String(dataHora.getDate()).padStart(2, '0') + '/' + String(dataHora.getMonth() + 1).padStart(2, '0') + '/' + dataHora.getFullYear();
+      const horaFormatada = String(dataHora.getHours()).padStart(2, '0') + ':' + String(dataHora.getMinutes()).padStart(2, '0');
+      const dataHoraFormatada = dataFormatada + ' ' + horaFormatada;
+
+      // Mapeamento de QR Code com resultados
+      const mapeamentoQR = {
+        "123": "Doca 1",
+        "456": "Doca 2",
+        "789": "Doca 3",
+        "1011": "Doca 4",
+        // Adicione outros mapeamentos conforme necessário
+      };
+
+      for (let i = 0; i < maxLength; i++) {
+        const codigoBarras = codigosBarras[i].trim().replace(/^\d+\.\s*/, ''); // Remove o índice para exibição
+        const qrCodeData = qrCodes[i].trim().replace(/^\d+\.\s*/, ''); // Remove o índice para exibição
+
+        if (codigoBarras === '' || qrCodeData === '') {
+          continue;
+        }
+
+        const codigoBarrasUrl = 'https://barcode.tec-it.com/barcode.ashx?data=' + encodeURIComponent(codigoBarras) + '&code=Code128&translate-esc=false';
+        const qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(qrCodeData);
+
+        janela.document.write('<div class="etiqueta">');
+        
+        // Adicionando a data e hora de impressão no topo centralizado
+        janela.document.write('<div class="data-hora">Impressão: ' + dataHoraFormatada + '</div>');
+
+        janela.document.write('<div class="codigo">');
+        janela.document.write('<div>' + codigoBarras + '</div>');
+        
+        // Mapeando o QR Code para o texto correspondente
+        const textoAssociado = mapeamentoQR[qrCodeData] || qrCodeData; // Se o código não estiver no mapeamento, exibe o próprio valor
+        janela.document.write('<div>' + textoAssociado + '</div>');
+        
+        janela.document.write('</div>');
+            
+        janela.document.write('<img class="qr-code" src="' + qrCodeUrl + '" alt="QR Code">');
+        janela.document.write('<img class="codigo-barras" src="' + codigoBarrasUrl + '" alt="Código de Barras">');
+        
+        janela.document.write('</div>');
+      }
+
+      janela.document.write('</body></html>');
+      janela.document.close();
+    }
+
+  </script>
+
+
+</body>
+</html>
